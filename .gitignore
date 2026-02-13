@@ -1,0 +1,30 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+*.db
+*.db-shm
+*.db-wal
+
+# .NET
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.userprefs
+.vs/
+.vscode/
+
+# Sensitive files
+*.keystore
+key.properties
+CREDENTIALS.txt
+local.properties
+
+# OS
+.DS_Store
+Thumbs.db

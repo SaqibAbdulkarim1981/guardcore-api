@@ -1,0 +1,30 @@
+# Fly.io deployment config
+app = "guardcore-api"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  ASPNETCORE_URLS = "http://+:5000"
+  ASPNETCORE_ENVIRONMENT = "Production"
+
+[[services]]
+  internal_port = 5000
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+
+# Persistent volume for SQLite database
+[mounts]
+  source = "guardcore_data"
+  destination = "/app/data"

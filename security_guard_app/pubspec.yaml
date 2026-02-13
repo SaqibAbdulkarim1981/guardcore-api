@@ -1,0 +1,25 @@
+name: security_guard_app
+description: A cross-platform app for Super Admin and user management, QR code generation, and reporting.
+version: 1.0.0+1
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  qr_flutter: ^4.1.0
+  firebase_core: ^4.4.0
+  firebase_auth: ^6.1.4
+  cloud_firestore: ^6.1.2
+  flutter_email_sender: ^8.0.0
+  provider: ^6.1.2
+  url_launcher: ^6.1.10
+  http: ^1.1.0
+  uuid: ^4.0.0
+  mobile_scanner: ^5.0.0
+  window_manager: ^0.3.7
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+flutter:
+  uses-material-design: true
