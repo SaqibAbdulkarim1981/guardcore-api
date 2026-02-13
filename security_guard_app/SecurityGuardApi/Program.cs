@@ -13,7 +13,13 @@ var configuration = builder.Configuration;
 builder.WebHost.UseUrls("http://0.0.0.0:5000");
 
 // Support both SQLite (local) and PostgreSQL (production)
-var connectionString = configuration.GetConnectionString("DefaultConnection");
+// Try DATABASE_URL first (Render standard), then ConnectionStrings__DefaultConnection
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") 
+    ?? configuration.GetConnectionString("DefaultConnection");
+
+Console.WriteLine($"Connection string found: {!string.IsNullOrEmpty(connectionString)}");
+Console.WriteLine($"Using database: {(connectionString?.StartsWith("postgres") == true ? "PostgreSQL" : "SQLite")}");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     if (connectionString != null && connectionString.StartsWith("postgres"))
