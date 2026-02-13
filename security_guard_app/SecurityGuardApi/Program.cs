@@ -12,8 +12,21 @@ var configuration = builder.Configuration;
 // Listen on all network interfaces for LAN access
 builder.WebHost.UseUrls("http://0.0.0.0:5000");
 
+// Support both SQLite (local) and PostgreSQL (production)
+var connectionString = configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(configuration.GetConnectionString("DefaultConnection")));
+{
+    if (connectionString != null && connectionString.StartsWith("postgres"))
+    {
+        // Use PostgreSQL for Render.com/cloud hosting
+        options.UseNpgsql(connectionString);
+    }
+    else
+    {
+        // Use SQLite for local development
+        options.UseSqlite(connectionString ?? "Data Source=securityguard.db");
+    }
+});
 
 builder.Services.AddScoped<IUserService, UserService>();
 
@@ -43,6 +56,17 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Add CORS support for Flutter app
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -59,6 +83,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Enable CORS
+app.UseCors();
 
 // Disabled for local development - Re-enable for production
 // app.UseHttpsRedirection();
