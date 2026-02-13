@@ -1,0 +1,52 @@
+═══════════════════════════════════════════════════════════════
+   RENDER.COM DEPLOYMENT - COPY THESE VALUES
+═══════════════════════════════════════════════════════════════
+
+STEP 1: CREATE POSTGRESQL DATABASE
+-----------------------------------
+1. Click "New +" > PostgreSQL
+2. Name: guardcore-db
+3. Database: guardcore
+4. Region: Choose closest to you
+5. Plan: Free
+6. Click "Create Database"
+7. WAIT for it to be "Available"
+8. Click on the database > Copy "Internal Database URL" (IMPORTANT!)
+
+STEP 2: CREATE WEB SERVICE
+-----------------------------------
+1. Click "New +" > Web Service
+2. "Connect a repository" > GitHub > Select: SaqibAbdulkarim1981/guardcore-api
+3. Configure:
+   Name: guardcore-api
+   Root Directory: security_guard_app/SecurityGuardApi
+   Environment: Docker
+   Instance Type: Free
+
+4. Click "Advanced" and add ENVIRONMENT VARIABLES:
+
+   Variable Name: ASPNETCORE_ENVIRONMENT
+   Value: Production
+
+   Variable Name: ASPNETCORE_URLS
+   Value: http://+:5000
+
+   Variable Name: ConnectionStrings__DefaultConnection
+   Value: [PASTE YOUR DATABASE URL FROM STEP 1]
+
+   Variable Name: Jwt__Key
+   Value: vR8xK2mP9wL4nQ6tB3jY7hF1sD5gM0cV2zX8aE4uW9pT7kN3bH6yJ1rG5vC0qL4m
+
+5. Click "Create Web Service"
+6. WAIT 5-10 minutes for deployment
+
+═══════════════════════════════════════════════════════════════
+   YOUR API WILL BE LIVE AT:
+   https://guardcore-api.onrender.com
+═══════════════════════════════════════════════════════════════
+
+After deployment completes, update your Flutter app:
+File: lib/config/api_config.dart
+Change: baseUrl = 'https://guardcore-api.onrender.com'
+
+Then rebuild: flutter build apk

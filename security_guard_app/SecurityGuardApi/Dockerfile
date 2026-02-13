@@ -4,20 +4,24 @@ EXPOSE 5000
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY ["SecurityGuardApi.csproj", "."]
-RUN dotnet restore "SecurityGuardApi.csproj"
+
+# Copy project file and restore dependencies
+COPY ["SecurityGuardApi.csproj", "./"]
+RUN dotnet restore "./SecurityGuardApi.csproj"
+
+# Copy everything else and build
 COPY . .
+WORKDIR "/src"
 RUN dotnet build "SecurityGuardApi.csproj" -c Release -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "SecurityGuardApi.csproj" -c Release -o /app/publish
+RUN dotnet publish "SecurityGuardApi.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
-# Create directory for SQLite database with proper permissions
+# Create directory for database (PostgreSQL will use connection string from env)
 RUN mkdir -p /app/data
-ENV ConnectionStrings__DefaultConnection="Data Source=/app/data/securityguard.db"
 
 ENTRYPOINT ["dotnet", "SecurityGuardApi.dll"]

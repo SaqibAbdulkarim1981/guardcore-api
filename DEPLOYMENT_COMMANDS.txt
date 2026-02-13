@@ -1,0 +1,11 @@
+# === DEPLOYMENT COMMANDS ===
+# Copy and paste these commands one by one
+
+# Step 1: Add GitHub remote (replace YOUR_USERNAME)
+git remote add origin https://github.com/YOUR_USERNAME/guardcore-api.git
+
+# Step 2: Push code
+git push -u origin main
+
+# Step 3: Your JWT Secret Key (copy this - you'll need it for Render.com)
+# JWT_KEY: vR8xK2mP9wL4nQ6tB3jY7hF1sD5gM0cV2zX8aE4uW9pT7kN3bH6yJ1rG5vC0qL4m
