@@ -39,14 +39,16 @@ if (connectionString != null && connectionString.StartsWith("postgres://"))
 Console.WriteLine($"Connection string found: {!string.IsNullOrEmpty(connectionString)}");
 Console.WriteLine($"Connection string length: {connectionString?.Length ?? 0}");
 Console.WriteLine($"Connection string starts with: {(connectionString != null && connectionString.Length > 15 ? connectionString.Substring(0, 15) : connectionString ?? "null")}");
-Console.WriteLine($"Using database: {(connectionString?.StartsWith("postgresql") == true ? "PostgreSQL" : "SQLite")}");
+
+bool isPostgreSQL = connectionString?.StartsWith("postgresql") == true;
+Console.WriteLine($"Using database: {(isPostgreSQL ? "PostgreSQL" : "SQLite")}");
 
 // Convert PostgreSQL URI to connection string format if needed
-if (connectionString != null && connectionString.StartsWith("postgresql://"))
+if (isPostgreSQL)
 {
     try
     {
-        var uri = new Uri(connectionString);
+        var uri = new Uri(connectionString!);
         var userInfo = uri.UserInfo.Split(':');
         connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
         Console.WriteLine($"Converted to key-value format successfully");
@@ -62,10 +64,10 @@ if (connectionString != null && connectionString.StartsWith("postgresql://"))
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    if (connectionString != null && (connectionString.StartsWith("postgres") || connectionString.StartsWith("postgresql")))
+    if (isPostgreSQL)
     {
         // Use PostgreSQL for Render.com/cloud hosting
-        options.UseNpgsql(connectionString);
+        options.UseNpgsql(connectionString!);
     }
     else
     {
