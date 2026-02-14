@@ -17,12 +17,18 @@ builder.WebHost.UseUrls("http://0.0.0.0:5000");
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") 
     ?? configuration.GetConnectionString("DefaultConnection");
 
+// Convert postgres:// to postgresql:// for Npgsql compatibility
+if (connectionString != null && connectionString.StartsWith("postgres://"))
+{
+    connectionString = connectionString.Replace("postgres://", "postgresql://");
+}
+
 Console.WriteLine($"Connection string found: {!string.IsNullOrEmpty(connectionString)}");
-Console.WriteLine($"Using database: {(connectionString?.StartsWith("postgres") == true ? "PostgreSQL" : "SQLite")}");
+Console.WriteLine($"Using database: {(connectionString?.StartsWith("postgresql") == true ? "PostgreSQL" : "SQLite")}");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    if (connectionString != null && connectionString.StartsWith("postgres"))
+    if (connectionString != null && (connectionString.StartsWith("postgres") || connectionString.StartsWith("postgresql")))
     {
         // Use PostgreSQL for Render.com/cloud hosting
         options.UseNpgsql(connectionString);
