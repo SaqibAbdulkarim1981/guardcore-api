@@ -41,23 +41,7 @@ Console.WriteLine($"Connection string length: {connectionString?.Length ?? 0}");
 Console.WriteLine($"Connection string starts with: {(connectionString != null && connectionString.Length > 15 ? connectionString.Substring(0, 15) : connectionString ?? "null")}");
 Console.WriteLine($"Using database: {(connectionString?.StartsWith("postgresql") == true ? "PostgreSQL" : "SQLite")}");
 
-// Validate connection string
-if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("postgresql"))
-{
-    try
-    {
-        // Test parse the connection string
-        var builder2 = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
-        Console.WriteLine($"Database: {builder2.Database}, Host: {builder2.Host}");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"ERROR parsing connection string: {ex.Message}");
-        Console.WriteLine($"Connection string WITHOUT debug brackets: {connectionString}");
-        Console.WriteLine($"Each character: {string.Join(",", connectionString.Select((c, i) => $"{i}:{c}({(int)c})"))}");
-        throw;
-    }
-}
+// Don't validate URI format here - let Entity Framework handle it directly
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
