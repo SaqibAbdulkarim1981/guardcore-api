@@ -17,6 +17,12 @@ builder.WebHost.UseUrls("http://0.0.0.0:5000");
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") 
     ?? configuration.GetConnectionString("DefaultConnection");
 
+// Remove any surrounding brackets or quotes that might have been copy-pasted
+if (connectionString != null)
+{
+    connectionString = connectionString.Trim('[', ']', '"', '\'', ' ');
+}
+
 // Convert postgres:// to postgresql:// for Npgsql compatibility
 if (connectionString != null && connectionString.StartsWith("postgres://"))
 {
