@@ -24,7 +24,26 @@ if (connectionString != null && connectionString.StartsWith("postgres://"))
 }
 
 Console.WriteLine($"Connection string found: {!string.IsNullOrEmpty(connectionString)}");
+Console.WriteLine($"Connection string length: {connectionString?.Length ?? 0}");
+Console.WriteLine($"Connection string starts with: {connectionString?.Substring(0, Math.Min(15, connectionString.Length ?? 0))}");
 Console.WriteLine($"Using database: {(connectionString?.StartsWith("postgresql") == true ? "PostgreSQL" : "SQLite")}");
+
+// Validate connection string
+if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("postgresql"))
+{
+    try
+    {
+        // Test parse the connection string
+        var builder2 = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+        Console.WriteLine($"Database: {builder2.Database}, Host: {builder2.Host}");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"ERROR parsing connection string: {ex.Message}");
+        Console.WriteLine($"Full connection string: [{connectionString}]");
+        throw;
+    }
+}
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
