@@ -41,6 +41,23 @@ Console.WriteLine($"Connection string length: {connectionString?.Length ?? 0}");
 Console.WriteLine($"Connection string starts with: {(connectionString != null && connectionString.Length > 15 ? connectionString.Substring(0, 15) : connectionString ?? "null")}");
 Console.WriteLine($"Using database: {(connectionString?.StartsWith("postgresql") == true ? "PostgreSQL" : "SQLite")}");
 
+// Convert PostgreSQL URI to connection string format if needed
+if (connectionString != null && connectionString.StartsWith("postgresql://"))
+{
+    try
+    {
+        var uri = new Uri(connectionString);
+        var userInfo = uri.UserInfo.Split(':');
+        connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+        Console.WriteLine($"Converted to key-value format successfully");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"ERROR converting URI: {ex.Message}");
+        throw;
+    }
+}
+
 // Don't validate URI format here - let Entity Framework handle it directly
 
 builder.Services.AddDbContext<AppDbContext>(options =>
