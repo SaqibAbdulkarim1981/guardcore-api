@@ -121,10 +121,27 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
-    
-    // Seed database with test data
-    SecurityGuardApi.DatabaseSeeder.SeedDatabase(db);
+    try
+    {
+        db.Database.Migrate();
+        Console.WriteLine("✅ Database migrations applied successfully");
+        
+        // Try to seed database - don't fail if it doesn't work
+        try
+        {
+            SecurityGuardApi.DatabaseSeeder.SeedDatabase(db);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️  Database seeding failed (this is OK for first deployment): {ex.Message}");
+            Console.WriteLine("💡 You can create users manually through the API");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Database error: {ex.Message}");
+        throw;
+    }
 }
 
 if (app.Environment.IsDevelopment())
