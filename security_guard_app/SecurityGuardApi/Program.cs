@@ -25,7 +25,7 @@ if (connectionString != null && connectionString.StartsWith("postgres://"))
 
 Console.WriteLine($"Connection string found: {!string.IsNullOrEmpty(connectionString)}");
 Console.WriteLine($"Connection string length: {connectionString?.Length ?? 0}");
-Console.WriteLine($"Connection string starts with: {connectionString?.Substring(0, Math.Min(15, connectionString.Length ?? 0))}");
+Console.WriteLine($"Connection string starts with: {(connectionString != null && connectionString.Length > 15 ? connectionString.Substring(0, 15) : connectionString ?? "null")}");
 Console.WriteLine($"Using database: {(connectionString?.StartsWith("postgresql") == true ? "PostgreSQL" : "SQLite")}");
 
 // Validate connection string
