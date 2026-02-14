@@ -20,8 +20,15 @@ var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
 // Remove any surrounding brackets or quotes that might have been copy-pasted
 if (connectionString != null)
 {
-    connectionString = connectionString.Trim('[', ']', '"', '\'', ' ');
+    connectionString = connectionString.Trim();
+    connectionString = connectionString.TrimStart('[', '"', '\'');
+    connectionString = connectionString.TrimEnd(']', '"', '\'');
+    connectionString = connectionString.Trim();
 }
+
+Console.WriteLine($"[DEBUG] Original connection string length: {connectionString?.Length ?? 0}");
+Console.WriteLine($"[DEBUG] First 20 chars: {(connectionString != null && connectionString.Length > 20 ? connectionString.Substring(0, 20) : connectionString ?? "null")}");
+Console.WriteLine($"[DEBUG] Last 20 chars: {(connectionString != null && connectionString.Length > 20 ? connectionString.Substring(connectionString.Length - 20) : connectionString ?? "null")}");
 
 // Convert postgres:// to postgresql:// for Npgsql compatibility
 if (connectionString != null && connectionString.StartsWith("postgres://"))
@@ -46,7 +53,8 @@ if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("post
     catch (Exception ex)
     {
         Console.WriteLine($"ERROR parsing connection string: {ex.Message}");
-        Console.WriteLine($"Full connection string: [{connectionString}]");
+        Console.WriteLine($"Connection string WITHOUT debug brackets: {connectionString}");
+        Console.WriteLine($"Each character: {string.Join(",", connectionString.Select((c, i) => $"{i}:{c}({(int)c})"))}");
         throw;
     }
 }
