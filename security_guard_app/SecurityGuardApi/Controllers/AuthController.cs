@@ -284,10 +284,11 @@ namespace SecurityGuardApi.Controllers
             try
             {
                 // Check if data already exists
-                var existingLocations = await _context.Locations.AnyAsync();
-                if (existingLocations)
+                var existingCount = await _context.Locations.CountAsync();
+                if (existingCount > 0)
                 {
-                    return Ok(new { message = "Test data already exists", locations = await _context.Locations.CountAsync(), attendance = await _context.Attendances.CountAsync() });
+                    var existingAttendance = await _context.Attendances.CountAsync();
+                    return Ok(new { message = "Test data already exists", locations = existingCount, attendance = existingAttendance });
                 }
 
                 // Step 1: Create location using EF Core
@@ -299,29 +300,29 @@ namespace SecurityGuardApi.Controllers
                 };
                 
                 _context.Locations.Add(location);
-                await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync(); // This will populate location.Id
 
                 // Step 2: Create attendance records for guard (user ID 1) - past 5 days
                 var now = DateTime.UtcNow;
                 var attendanceRecords = new List<Attendance>
                 {
-                    // Day 7 days ago
+                    // Day 1 (7 days ago)
                     new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-7).AddHours(9), QRData = "1" },
                     new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-7).AddHours(17), QRData = "1" },
                     
-                    // Day 6 days ago
+                    // Day 2
                     new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-6).AddHours(9), QRData = "1" },
                     new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-6).AddHours(18), QRData = "1" },
                     
-                    // Day 5 days ago
+                    // Day 3
                     new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-5).AddHours(8).AddMinutes(30), QRData = "1" },
                     new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-5).AddHours(17).AddMinutes(15), QRData = "1" },
                     
-                    // Day 4 days ago
+                    // Day 4
                     new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-4).AddHours(9).AddMinutes(15), QRData = "1" },
                     new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-4).AddHours(17).AddMinutes(45), QRData = "1" },
                     
-                    // Day 3 days ago
+                    // Day 5
                     new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-3).AddHours(9).AddMinutes(5), QRData = "1" },
                     new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-3).AddHours(18).AddMinutes(10), QRData = "1" }
                 };
@@ -329,19 +330,23 @@ namespace SecurityGuardApi.Controllers
                 _context.Attendances.AddRange(attendanceRecords);
                 await _context.SaveChangesAsync();
 
+                // Verify counts
+                var locCount = await _context.Locations.CountAsync();
+                var attCount = await _context.Attendances.CountAsync();
+
                 return Ok(new 
                 { 
                     message = "Test data seeded successfully!",
                     location = location.Name,
                     locationId = location.Id,
-                    records = attendanceRecords.Count,
-                    days = 5,
-                    note = "Data inserted via EF Core"
+                    locations = locCount,
+                    attendance = attCount,
+                    days = 5
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = $"Test data seeding error: {ex.Message}", detail = ex.InnerException?.Message, stack = ex.StackTrace });
+                return StatusCode(500, new { message = $"Seeding error: {ex.Message}", detail = ex.InnerException?.Message, stack = ex.StackTrace });
             }
         }
     }
