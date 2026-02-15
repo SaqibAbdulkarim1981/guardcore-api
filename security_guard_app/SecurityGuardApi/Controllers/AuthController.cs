@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SecurityGuardApi.Data;
 using SecurityGuardApi.DTOs;
+using SecurityGuardApi.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -103,14 +104,38 @@ namespace SecurityGuardApi.Controllers
                     return Ok(new { message = "Database already seeded", users = await _context.Users.CountAsync() });
                 }
 
-                // Call the seeder
-                DatabaseSeeder.SeedDatabase(_context);
+                // Create admin user directly
+                var adminUser = new User
+                {
+                    Name = "Admin User",
+                    Email = "admin@example.com",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
+                    IsBlocked = false,
+                    ExpiryDate = DateTime.UtcNow.AddYears(10),
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Users.Add(adminUser);
+
+                // Create guard user directly
+                var guardUser = new User
+                {
+                    Name = "Test Guard",
+                    Email = "guard@test.com",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("guard123"),
+                    IsBlocked = false,
+                    ExpiryDate = DateTime.UtcNow.AddDays(30),
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Users.Add(guardUser);
+
+                // Save users
+                await _context.SaveChangesAsync();
                 
                 return Ok(new { message = "Database seeded successfully!", users = await _context.Users.CountAsync() });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = $"Seeding error: {ex.Message}" });
+                return StatusCode(500, new { message = $"Seeding error: {ex.Message}", detail = ex.InnerException?.Message });
             }
         }
     }
