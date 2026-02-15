@@ -1,6 +1,6 @@
 class ApiConfig {
-  // Production API on Render.com (FREE hosting!)
-  // For local development, change to: 'http://10.0.0.208:5000/api'
+  // Production API on Render.com (Cloud hosting)
+  // For local development, change to: 'http://192.168.56.1:5000/api'
   static const String baseUrl = 'https://guardcore-api.onrender.com/api';
   static const int timeoutSeconds = 30;
   

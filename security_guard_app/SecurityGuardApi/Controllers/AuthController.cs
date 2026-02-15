@@ -90,5 +90,28 @@ namespace SecurityGuardApi.Controllers
                 return StatusCode(500, new { message = $"Login error: {ex.Message}" });
             }
         }
+
+        [HttpPost("seed")]
+        public async Task<IActionResult> SeedDatabase()
+        {
+            try
+            {
+                // Check if already seeded
+                var adminExists = await _context.Users.AnyAsync(u => u.Email == "admin@example.com");
+                if (adminExists)
+                {
+                    return Ok(new { message = "Database already seeded", users = await _context.Users.CountAsync() });
+                }
+
+                // Call the seeder
+                DatabaseSeeder.SeedDatabase(_context);
+                
+                return Ok(new { message = "Database seeded successfully!", users = await _context.Users.CountAsync() });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Seeding error: {ex.Message}" });
+            }
+        }
     }
 }

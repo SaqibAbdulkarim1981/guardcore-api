@@ -21,27 +21,29 @@ import 'services/firebase_service.dart';
 import 'services/api_service.dart';
 
 // Toggle this to switch between Admin App and Guard Mobile App
-const bool USE_MOBILE_APP = false; // Set to true for mobile guard app, false for admin app
+const bool USE_MOBILE_APP = true; // Set to true for mobile guard app, false for admin app
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Configure window for desktop
-  await windowManager.ensureInitialized();
+  // Configure window for desktop (only if not mobile app)
+  if (!USE_MOBILE_APP) {
+    await windowManager.ensureInitialized();
   
-  WindowOptions windowOptions = const WindowOptions(
-    size: Size(1920, 1080),
-    maximumSize: Size(1920, 1080),
-    center: true,
-    skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.hidden,
-  );
-  
-  windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
-    await windowManager.maximize();
-  });
+    WindowOptions windowOptions = const WindowOptions(
+      size: Size(1920, 1080),
+      maximumSize: Size(1920, 1080),
+      center: true,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.hidden,
+    );
+    
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+      await windowManager.maximize();
+    });
+  }
   
   runApp(const SecurityGuardApp());
 }
