@@ -282,8 +282,7 @@ namespace SecurityGuardApi.Controllers
         public async Task<IActionResult> SeedTestData()
         {
             try
-            {
-                // Check if data already exists
+            {                // Check if data already exists
                 var existingCount = await _context.Locations.CountAsync();
                 if (existingCount > 0)
                 {
@@ -292,43 +291,68 @@ namespace SecurityGuardApi.Controllers
                 }
 
                 // Step 1: Create location using EF Core
-                var location = new Location
+                Location location;
+                try
                 {
-                    Name = "Main Entrance",
-                    Description = "Front gate checkpoint",
-                    CreatedAt = DateTime.UtcNow
-                };
-                
-                _context.Locations.Add(location);
-                await _context.SaveChangesAsync(); // This will populate location.Id
+                    location = new Location
+                    {
+                        Name = "Main Entrance",
+                        Description = "Front gate checkpoint",
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    
+                    _context.Locations.Add(location);
+                    await _context.SaveChangesAsync(); // This will populate location.Id
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { 
+                        message = "Failed to create location",
+                        error = ex.Message,
+                        innerError = ex.InnerException?.Message,
+                        stackTrace = ex.StackTrace?.Split('\n').Take(5).ToArray()
+                    });
+                }
 
                 // Step 2: Create attendance records for guard (user ID 1) - past 5 days
-                var now = DateTime.UtcNow;
-                var attendanceRecords = new List<Attendance>
-                {
-                    // Day 1 (7 days ago)
-                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-7).AddHours(9), QRData = "1" },
-                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-7).AddHours(17), QRData = "1" },
-                    
-                    // Day 2
-                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-6).AddHours(9), QRData = "1" },
-                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-6).AddHours(18), QRData = "1" },
-                    
-                    // Day 3
-                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-5).AddHours(8).AddMinutes(30), QRData = "1" },
-                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-5).AddHours(17).AddMinutes(15), QRData = "1" },
-                    
-                    // Day 4
-                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-4).AddHours(9).AddMinutes(15), QRData = "1" },
-                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-4).AddHours(17).AddMinutes(45), QRData = "1" },
-                    
-                    // Day 5
-                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-3).AddHours(9).AddMinutes(5), QRData = "1" },
-                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-3).AddHours(18).AddMinutes(10), QRData = "1" }
-                };
+                try  {
+                    var now = DateTime.UtcNow;
+                    var attendanceRecords = new List<Attendance>
+                    {
+                        // Day 1 (7 days ago)
+                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-7).AddHours(9), QRData = "1" },
+                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-7).AddHours(17), QRData = "1" },
+                        
+                        // Day 2
+                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-6).AddHours(9), QRData = "1" },
+                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-6).AddHours(18), QRData = "1" },
+                        
+                        // Day 3
+                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-5).AddHours(8).AddMinutes(30), QRData = "1" },
+                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-5).AddHours(17).AddMinutes(15), QRData = "1" },
+                        
+                        // Day 4
+                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-4).AddHours(9).AddMinutes(15), QRData = "1" },
+                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-4).AddHours(17).AddMinutes(45), QRData = "1" },
+                        
+                        // Day 5
+                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-3).AddHours(9).AddMinutes(5), QRData = "1" },
+                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-3).AddHours(18).AddMinutes(10), QRData = "1" }
+                    };
 
-                _context.Attendances.AddRange(attendanceRecords);
-                await _context.SaveChangesAsync();
+                    _context.Attendances.AddRange(attendanceRecords);
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, new { 
+                        message = "Failed to create attendance records",
+                        locationId = location.Id,
+                        error = ex.Message,
+                        innerError = ex.InnerException?.Message,
+                        stackTrace = ex.StackTrace?.Split('\n').Take(5).ToArray()
+                    });
+                }
 
                 // Verify counts
                 var locCount = await _context.Locations.CountAsync();
