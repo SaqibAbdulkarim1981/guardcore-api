@@ -285,56 +285,54 @@ namespace SecurityGuardApi.Controllers
             {
                 var isPostgres = _context.Database.ProviderName?.Contains("Npgsql") ?? false;
                 
-                if (isPostgres)
+                if (!isPostgres)
                 {
-                    // Direct SQL insertion for PostgreSQL
-                    // Insert location
-                    await _context.Database.ExecuteSqlRawAsync(@"
-                        INSERT INTO ""Locations"" (""Name"", ""Description"", ""CreatedAt"")
-                        SELECT 'Main Entrance', 'Front gate checkpoint', CURRENT_TIMESTAMP
-                        WHERE NOT EXISTS (SELECT 1 FROM ""Locations"" WHERE ""Name"" = 'Main Entrance');
-                    ");
-
-                    // Insert attendance records for guard (user ID 1) - past 5 days
-                    await _context.Database.ExecuteSqlRawAsync(@"
-                        INSERT INTO ""Attendances"" (""UserId"", ""LocationId"", ""Type"", ""Timestamp"", ""QRData"")
-                        SELECT 1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '7 days' + INTERVAL '9 hours', '1'
-                        WHERE NOT EXISTS (SELECT 1 FROM ""Attendances"" LIMIT 1)
-                        UNION ALL
-                        SELECT 1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '7 days' + INTERVAL '17 hours', '1'
-                        UNION ALL
-                        SELECT 1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '6 days' + INTERVAL '9 hours', '1'
-                        UNION ALL
-                        SELECT 1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '6 days' + INTERVAL '18 hours', '1'
-                        UNION ALL
-                        SELECT 1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '5 days' + INTERVAL '8 hours 30 minutes', '1'
-                        UNION ALL
-                        SELECT 1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '5 days' + INTERVAL '17 hours 15 minutes', '1'
-                        UNION ALL
-                        SELECT 1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '4 days' + INTERVAL '9 hours 15 minutes', '1'
-                        UNION ALL
-                        SELECT 1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '4 days' + INTERVAL '17 hours 45 minutes', '1'
-                        UNION ALL
-                        SELECT 1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '3 days' + INTERVAL '9 hours 5 minutes', '1'
-                        UNION ALL
-                        SELECT 1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '3 days' + INTERVAL '18 hours 10 minutes', '1';
-                    ");
-
-                    var count = await _context.Attendances.CountAsync();
-                    return Ok(new 
-                    { 
-                        message = "Test data seeded successfully!",
-                        location = "Main Entrance",
-                        records = count,
-                        days = 5
-                    });
+                    return BadRequest(new { message = "Only PostgreSQL is supported for test data seeding" });
                 }
 
-                return BadRequest(new { message = "Only PostgreSQL is supported for test data seeding" });
+                // Direct SQL insertion for PostgreSQL
+                // Step 1: Insert location if not exists
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO ""Locations"" (""Name"", ""Description"", ""CreatedAt"")
+                    SELECT 'Main Entrance', 'Front gate checkpoint', CURRENT_TIMESTAMP
+                    WHERE NOT EXISTS (SELECT 1 FROM ""Locations"" WHERE ""Name"" = 'Main Entrance');
+                ");
+
+                // Step 2: Insert attendance records for guard (user ID 1) - past 5 days
+                // Only insert if no attendance records exist yet
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO ""Attendances"" (""UserId"", ""LocationId"", ""Type"", ""Timestamp"", ""QRData"")
+                    SELECT * FROM (VALUES
+                        (1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '7 days' + INTERVAL '9 hours', '1'),
+                        (1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '7 days' + INTERVAL '17 hours', '1'),
+                        (1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '6 days' + INTERVAL '9 hours', '1'),
+                        (1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '6 days' + INTERVAL '18 hours', '1'),
+                        (1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '5 days' + INTERVAL '8 hours 30 minutes', '1'),
+                        (1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '5 days' + INTERVAL '17 hours 15 minutes', '1'),
+                        (1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '4 days' + INTERVAL '9 hours 15 minutes', '1'),
+                        (1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '4 days' + INTERVAL '17 hours 45 minutes', '1'),
+                        (1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '3 days' + INTERVAL '9 hours 5 minutes', '1'),
+                        (1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '3 days' + INTERVAL '18 hours 10 minutes', '1')
+                    ) AS data(""UserId"", ""LocationId"", ""Type"", ""Timestamp"", ""QRData"")
+                    WHERE NOT EXISTS (SELECT 1 FROM ""Attendances"" LIMIT 1);
+                ");
+
+                // Get counts for confirmation
+                var locationCount = await _context.Database.ExecuteSqlRawAsync("SELECT COUNT(*) FROM \"Locations\";");
+                var attendanceCount = await _context.Database.ExecuteSqlRawAsync("SELECT COUNT(*) FROM \"Attendances\";");
+
+                return Ok(new 
+                { 
+                    message = "Test data seeded successfully!",
+                    location = "Main Entrance",
+                    records = 10,
+                    days = 5,
+                    note = "Data inserted via raw SQL"
+                });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = $"Test data seeding error: {ex.Message}", detail = ex.InnerException?.Message });
+                return StatusCode(500, new { message = $"Test data seeding error: {ex.Message}", detail = ex.InnerException?.Message, stack = ex.StackTrace });
             }
         }
     }
