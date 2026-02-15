@@ -310,7 +310,14 @@ namespace SecurityGuardApi.Controllers
         public async Task<IActionResult> SeedTestData()
         {
             try
-            {                // Check if data already exists
+            {
+                var isPostgres = _context.Database.ProviderName?.Contains("Npgsql") ?? false;
+                if (!isPostgres)
+                {
+                    return BadRequest(new { message = "PostgreSQL required" });
+                }
+
+                // Check if data already exists
                 var existingCount = await _context.Locations.CountAsync();
                 if (existingCount > 0)
                 {
@@ -318,87 +325,58 @@ namespace SecurityGuardApi.Controllers
                     return Ok(new { message = "Test data already exists", locations = existingCount, attendance = existingAttendance });
                 }
 
-                // Step 1: Create location using EF Core
-                Location location;
+                // Fix sequence - reset it to start from 1
                 try
                 {
-                    location = new Location
-                    {
-                        Name = "Main Entrance",
-                        Description = "Front gate checkpoint",
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    
-                    _context.Locations.Add(location);
-                    await _context.SaveChangesAsync(); // This will populate location.Id
+                    await _context.Database.ExecuteSqlRawAsync(@"
+                        ALTER SEQUENCE ""Locations_Id_seq"" RESTART WITH 1;
+                    ");
                 }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, new { 
-                        message = "Failed to create location",
-                        error = ex.Message,
-                        innerError = ex.InnerException?.Message,
-                        stackTrace = ex.StackTrace?.Split('\n').Take(5).ToArray()
-                    });
-                }
+                catch { /* Sequence might not exist */ }
 
-                // Step 2: Create attendance records for guard (user ID 1) - past 5 days
-                try  {
-                    var now = DateTime.UtcNow;
-                    var attendanceRecords = new List<Attendance>
-                    {
-                        // Day 1 (7 days ago)
-                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-7).AddHours(9), QRData = "1" },
-                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-7).AddHours(17), QRData = "1" },
-                        
-                        // Day 2
-                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-6).AddHours(9), QRData = "1" },
-                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-6).AddHours(18), QRData = "1" },
-                        
-                        // Day 3
-                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-5).AddHours(8).AddMinutes(30), QRData = "1" },
-                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-5).AddHours(17).AddMinutes(15), QRData = "1" },
-                        
-                        // Day 4
-                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-4).AddHours(9).AddMinutes(15), QRData = "1" },
-                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-4).AddHours(17).AddMinutes(45), QRData = "1" },
-                        
-                        // Day 5
-                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-3).AddHours(9).AddMinutes(5), QRData = "1" },
-                        new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-3).AddHours(18).AddMinutes(10), QRData = "1" }
-                    };
+                // Insert location with explicit nextval
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO ""Locations"" (""Id"", ""Name"", ""Description"", ""CreatedAt"")
+                    VALUES (nextval('""Locations_Id_seq""'), 'Main Entrance', 'Front gate checkpoint', CURRENT_TIMESTAMP);
+                ");
 
-                    _context.Attendances.AddRange(attendanceRecords);
-                    await _context.SaveChangesAsync();
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, new { 
-                        message = "Failed to create attendance records",
-                        locationId = location.Id,
-                        error = ex.Message,
-                        innerError = ex.InnerException?.Message,
-                        stackTrace = ex.StackTrace?.Split('\n').Take(5).ToArray()
-                    });
-                }
+                // Get the location ID
+                var locationId = await _context.Locations.Select(l => l.Id).FirstAsync();
 
-                // Verify counts
-                var locCount = await _context.Locations.CountAsync();
-                var attCount = await _context.Attendances.CountAsync();
+                // Insert attendance records
+                var now = DateTime.UtcNow;
+                await _context.Database.ExecuteSqlRawAsync($@"
+                    INSERT INTO ""Attendances"" (""Id"", ""UserId"", ""LocationId"", ""Type"", ""Timestamp"", ""QRData"")
+                    VALUES
+                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckIn', '{now.AddDays(-7).AddHours(9):yyyy-MM-dd HH:mm:ss}', '1'),
+                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckOut', '{now.AddDays(-7).AddHours(17):yyyy-MM-dd HH:mm:ss}', '1'),
+                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckIn', '{now.AddDays(-6).AddHours(9):yyyy-MM-dd HH:mm:ss}', '1'),
+                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckOut', '{now.AddDays(-6).AddHours(18):yyyy-MM-dd HH:mm:ss}', '1'),
+                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckIn', '{now.AddDays(-5).AddHours(8).AddMinutes(30):yyyy-MM-dd HH:mm:ss}', '1'),
+                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckOut', '{now.AddDays(-5).AddHours(17).AddMinutes(15):yyyy-MM-dd HH:mm:ss}', '1'),
+                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckIn', '{now.AddDays(-4).AddHours(9).AddMinutes(15):yyyy-MM-dd HH:mm:ss}', '1'),
+                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckOut', '{now.AddDays(-4).AddHours(17).AddMinutes(45):yyyy-MM-dd HH:mm:ss}', '1'),
+                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckIn', '{now.AddDays(-3).AddHours(9).AddMinutes(5):yyyy-MM-dd HH:mm:ss}', '1'),
+                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckOut', '{now.AddDays(-3).AddHours(18).AddMinutes(10):yyyy-MM-dd HH:mm:ss}', '1');
+                ");
 
                 return Ok(new 
                 { 
                     message = "Test data seeded successfully!",
-                    location = location.Name,
-                    locationId = location.Id,
-                    locations = locCount,
-                    attendance = attCount,
+                    location = "Main Entrance",
+                    locationId = locationId,
+                    locations = await _context.Locations.CountAsync(),
+                    attendance = await _context.Attendances.CountAsync(),
                     days = 5
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = $"Seeding error: {ex.Message}", detail = ex.InnerException?.Message, stack = ex.StackTrace });
+                return StatusCode(500, new { 
+                    message = "Seeding error",
+                    error = ex.Message, 
+                    innerError = ex.InnerException?.Message
+                });
             }
         }
     }
