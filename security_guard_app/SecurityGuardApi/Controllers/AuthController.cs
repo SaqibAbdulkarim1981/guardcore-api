@@ -283,51 +283,60 @@ namespace SecurityGuardApi.Controllers
         {
             try
             {
-                var isPostgres = _context.Database.ProviderName?.Contains("Npgsql") ?? false;
-                
-                if (!isPostgres)
+                // Check if data already exists
+                var existingLocations = await _context.Locations.AnyAsync();
+                if (existingLocations)
                 {
-                    return BadRequest(new { message = "Only PostgreSQL is supported for test data seeding" });
+                    return Ok(new { message = "Test data already exists", locations = await _context.Locations.CountAsync(), attendance = await _context.Attendances.CountAsync() });
                 }
 
-                // Direct SQL insertion for PostgreSQL
-                // Step 1: Insert location if not exists
-                await _context.Database.ExecuteSqlRawAsync(@"
-                    INSERT INTO ""Locations"" (""Name"", ""Description"", ""CreatedAt"")
-                    SELECT 'Main Entrance', 'Front gate checkpoint', CURRENT_TIMESTAMP
-                    WHERE NOT EXISTS (SELECT 1 FROM ""Locations"" WHERE ""Name"" = 'Main Entrance');
-                ");
+                // Step 1: Create location using EF Core
+                var location = new Location
+                {
+                    Name = "Main Entrance",
+                    Description = "Front gate checkpoint",
+                    CreatedAt = DateTime.UtcNow
+                };
+                
+                _context.Locations.Add(location);
+                await _context.SaveChangesAsync();
 
-                // Step 2: Insert attendance records for guard (user ID 1) - past 5 days
-                // Only insert if no attendance records exist yet
-                await _context.Database.ExecuteSqlRawAsync(@"
-                    INSERT INTO ""Attendances"" (""UserId"", ""LocationId"", ""Type"", ""Timestamp"", ""QRData"")
-                    SELECT * FROM (VALUES
-                        (1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '7 days' + INTERVAL '9 hours', '1'),
-                        (1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '7 days' + INTERVAL '17 hours', '1'),
-                        (1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '6 days' + INTERVAL '9 hours', '1'),
-                        (1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '6 days' + INTERVAL '18 hours', '1'),
-                        (1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '5 days' + INTERVAL '8 hours 30 minutes', '1'),
-                        (1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '5 days' + INTERVAL '17 hours 15 minutes', '1'),
-                        (1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '4 days' + INTERVAL '9 hours 15 minutes', '1'),
-                        (1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '4 days' + INTERVAL '17 hours 45 minutes', '1'),
-                        (1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '3 days' + INTERVAL '9 hours 5 minutes', '1'),
-                        (1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '3 days' + INTERVAL '18 hours 10 minutes', '1')
-                    ) AS data(""UserId"", ""LocationId"", ""Type"", ""Timestamp"", ""QRData"")
-                    WHERE NOT EXISTS (SELECT 1 FROM ""Attendances"" LIMIT 1);
-                ");
+                // Step 2: Create attendance records for guard (user ID 1) - past 5 days
+                var now = DateTime.UtcNow;
+                var attendanceRecords = new List<Attendance>
+                {
+                    // Day 7 days ago
+                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-7).AddHours(9), QRData = "1" },
+                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-7).AddHours(17), QRData = "1" },
+                    
+                    // Day 6 days ago
+                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-6).AddHours(9), QRData = "1" },
+                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-6).AddHours(18), QRData = "1" },
+                    
+                    // Day 5 days ago
+                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-5).AddHours(8).AddMinutes(30), QRData = "1" },
+                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-5).AddHours(17).AddMinutes(15), QRData = "1" },
+                    
+                    // Day 4 days ago
+                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-4).AddHours(9).AddMinutes(15), QRData = "1" },
+                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-4).AddHours(17).AddMinutes(45), QRData = "1" },
+                    
+                    // Day 3 days ago
+                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckIn", Timestamp = now.AddDays(-3).AddHours(9).AddMinutes(5), QRData = "1" },
+                    new Attendance { UserId = 1, LocationId = location.Id, Type = "CheckOut", Timestamp = now.AddDays(-3).AddHours(18).AddMinutes(10), QRData = "1" }
+                };
 
-                // Get counts for confirmation
-                var locationCount = await _context.Database.ExecuteSqlRawAsync("SELECT COUNT(*) FROM \"Locations\";");
-                var attendanceCount = await _context.Database.ExecuteSqlRawAsync("SELECT COUNT(*) FROM \"Attendances\";");
+                _context.Attendances.AddRange(attendanceRecords);
+                await _context.SaveChangesAsync();
 
                 return Ok(new 
                 { 
                     message = "Test data seeded successfully!",
-                    location = "Main Entrance",
-                    records = 10,
+                    location = location.Name,
+                    locationId = location.Id,
+                    records = attendanceRecords.Count,
                     days = 5,
-                    note = "Data inserted via raw SQL"
+                    note = "Data inserted via EF Core"
                 });
             }
             catch (Exception ex)
