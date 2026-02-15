@@ -146,7 +146,16 @@ namespace SecurityGuardApi.Controllers
                     "ALTER TABLE \"Users\" ALTER COLUMN \"IsBlocked\" TYPE boolean USING \"IsBlocked\"::boolean;"
                 );
 
-                // Fix 2: Create sequence for Id auto-increment if it doesn't exist
+                // Fix 2: Convert CreatedAt and ExpiryDate from text to timestamp
+                await _context.Database.ExecuteSqlRawAsync(
+                    "ALTER TABLE \"Users\" ALTER COLUMN \"CreatedAt\" TYPE timestamp USING \"CreatedAt\"::timestamp;"
+                );
+                
+                await _context.Database.ExecuteSqlRawAsync(
+                    "ALTER TABLE \"Users\" ALTER COLUMN \"ExpiryDate\" TYPE timestamp USING \"ExpiryDate\"::timestamp;"
+                );
+
+                // Fix 3: Create sequence for Id auto-increment if it doesn't exist
                 await _context.Database.ExecuteSqlRawAsync(@"
                     DO $$ 
                     BEGIN
@@ -158,7 +167,7 @@ namespace SecurityGuardApi.Controllers
                     END $$;
                 ");
 
-                return Ok(new { message = "Database schema fixed successfully (boolean + auto-increment)!" });
+                return Ok(new { message = "Database schema fixed successfully (boolean + timestamps + auto-increment)!" });
             }
             catch (Exception ex)
             {
