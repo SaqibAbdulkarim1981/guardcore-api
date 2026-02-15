@@ -223,5 +223,138 @@ namespace SecurityGuardApi.Controllers
                 return StatusCode(500, new { message = $"Seeding error: {ex.Message}", detail = ex.InnerException?.Message });
             }
         }
+
+        [HttpPost("init-tables")]
+        public async Task<IActionResult> InitializeTables()
+        {
+            try
+            {
+                var isPostgres = _context.Database.ProviderName?.Contains("Npgsql") ?? false;
+                
+                if (!isPostgres)
+                {
+                    return Ok(new { message = "Not PostgreSQL, using SQLite - tables created automatically" });
+                }
+
+                // Create Locations table if not exists
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    CREATE TABLE IF NOT EXISTS ""Locations"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Name"" VARCHAR(255) NOT NULL,
+                        ""Description"" TEXT,
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                ");
+
+                // Create Attendances table if not exists
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    CREATE TABLE IF NOT EXISTS ""Attendances"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""UserId"" INTEGER NOT NULL,
+                        ""LocationId"" INTEGER NOT NULL,
+                        ""Type"" VARCHAR(50) NOT NULL DEFAULT 'CheckIn',
+                        ""Timestamp"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""QRData"" TEXT
+                    );
+                ");
+
+                // Create Reports table if not exists
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    CREATE TABLE IF NOT EXISTS ""Reports"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""UserId"" INTEGER,
+                        ""LocationId"" INTEGER,
+                        ""Type"" VARCHAR(100),
+                        ""Description"" TEXT,
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                ");
+
+                return Ok(new { message = "Tables created successfully (Locations, Attendances, Reports)!" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Table creation error: {ex.Message}", inner = ex.InnerException?.Message });
+            }
+        }
+
+        [HttpPost("seed-test-data")]
+        public async Task<IActionResult> SeedTestData()
+        {
+            try
+            {
+                // Create a test location
+                var locationExists = await _context.Locations.AnyAsync();
+                if (!locationExists)
+                {
+                    var location = new Location
+                    {
+                        Name = "Main Entrance",
+                        Description = "Front gate checkpoint",
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Locations.Add(location);
+                    await _context.SaveChangesAsync();
+                }
+
+                var testLocation = await _context.Locations.FirstOrDefaultAsync();
+                var guardUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == "guard@test.com");
+
+                if (testLocation == null || guardUser == null)
+                {
+                    return BadRequest(new { message = "Location or guard user not found. Run seed endpoint first." });
+                }
+
+                // Check if attendance records already exist
+                var attendanceExists = await _context.Attendances.AnyAsync();
+                if (attendanceExists)
+                {
+                    return Ok(new { message = "Test data already exists", records = await _context.Attendances.CountAsync() });
+                }
+
+                // Create test attendance records for the past 5 days
+                var records = new List<Attendance>();
+                var baseDate = DateTime.UtcNow.AddDays(-7);
+
+                for (int i = 0; i < 5; i++)
+                {
+                    var checkInTime = baseDate.AddDays(i).Date.AddHours(9).AddMinutes(new Random().Next(0, 15));
+                    var checkOutTime = checkInTime.AddHours(8).AddMinutes(new Random().Next(30, 60));
+
+                    records.Add(new Attendance
+                    {
+                        UserId = guardUser.Id,
+                        LocationId = testLocation.Id,
+                        Type = "CheckIn",
+                        Timestamp = checkInTime,
+                        QRData = testLocation.Id.ToString()
+                    });
+
+                    records.Add(new Attendance
+                    {
+                        UserId = guardUser.Id,
+                        LocationId = testLocation.Id,
+                        Type = "CheckOut",
+                        Timestamp = checkOutTime,
+                        QRData = testLocation.Id.ToString()
+                    });
+                }
+
+                _context.Attendances.AddRange(records);
+                await _context.SaveChangesAsync();
+
+                return Ok(new 
+                { 
+                    message = "Test data seeded successfully!",
+                    location = testLocation.Name,
+                    records = records.Count,
+                    days = 5
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Test data seeding error: {ex.Message}", detail = ex.InnerException?.Message });
+            }
+        }
     }
 }

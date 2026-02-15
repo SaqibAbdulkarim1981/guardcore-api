@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/user.dart';
+import '../models/attendance.dart';
 
 class ApiService extends ChangeNotifier {
   String? _token;
@@ -398,6 +399,62 @@ class ApiService extends ChangeNotifier {
     } catch (e) {
       debugPrint('❌ Password reset error: $e');
       rethrow;
+    }
+  }
+
+  // Fetch all attendance records
+  Future<List<Attendance>> fetchAllAttendance() async {
+    try {
+      debugPrint('📊 Fetching all attendance records');
+      final client = _createClient();
+      final response = await client
+          .get(
+            Uri.parse('${ApiConfig.baseUrl}/Attendance'),
+            headers: _headers(),
+          )
+          .timeout(Duration(seconds: ApiConfig.timeoutSeconds));
+
+      debugPrint('📊 Attendance response: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final attendance = data.map((json) => Attendance.fromJson(json)).toList();
+        debugPrint('✅ Fetched ${attendance.length} attendance records');
+        return attendance;
+      }
+      
+      throw Exception('Failed to fetch attendance: ${response.statusCode}');
+    } catch (e) {
+      debugPrint('❌ Fetch attendance error: $e');
+      return [];
+    }
+  }
+
+  // Fetch attendance for specific user
+  Future<List<Attendance>> fetchUserAttendance(int userId) async {
+    try {
+      debugPrint('📊 Fetching attendance for user $userId');
+      final client = _createClient();
+      final response = await client
+          .get(
+            Uri.parse('${ApiConfig.baseUrl}/Attendance/user/$userId'),
+            headers: _headers(),
+          )
+          .timeout(Duration(seconds: ApiConfig.timeoutSeconds));
+
+      debugPrint('📊 User attendance response: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final attendance = data.map((json) => Attendance.fromJson(json)).toList();
+        debugPrint('✅ Fetched ${attendance.length} attendance records for user');
+        return attendance;
+      }
+      
+      throw Exception('Failed to fetch user attendance: ${response.statusCode}');
+    } catch (e) {
+      debugPrint('❌ Fetch user attendance error: $e');
+      return [];
     }
   }
 

@@ -174,10 +174,10 @@ class DashboardScreen extends StatelessWidget {
                             onTap: () => Navigator.pushNamed(context, '/locations'),
                           ),
                           _IconTile(
-                            icon: Icons.assignment_outlined,
-                            title: 'Incident Reports',
+                            icon: Icons.assessment_outlined,
+                            title: 'Reports',
                             color: Colors.orange,
-                            onTap: () => Navigator.pushNamed(context, '/reports'),
+                            onTap: () => Navigator.pushNamed(context, '/reports-menu'),
                           ),
                           _IconTile(
                             icon: Icons.settings_outlined,

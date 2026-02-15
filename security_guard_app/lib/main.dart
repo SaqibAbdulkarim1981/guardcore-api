@@ -11,6 +11,10 @@ import 'screens/create_user.dart';
 import 'screens/locations.dart';
 import 'screens/reports.dart';
 import 'screens/settings.dart';
+import 'screens/reports_menu_screen.dart';
+import 'screens/attendance_report_screen.dart';
+import 'screens/activity_report_screen.dart';
+import 'screens/incident_report_screen.dart';
 
 // Mobile Guard App
 import 'mobile/guard_main.dart';
@@ -21,7 +25,7 @@ import 'services/firebase_service.dart';
 import 'services/api_service.dart';
 
 // Toggle this to switch between Admin App and Guard Mobile App
-const bool USE_MOBILE_APP = true; // Set to true for mobile guard app, false for admin app
+const bool USE_MOBILE_APP = false; // Set to true for mobile guard app, false for admin app
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -89,6 +93,10 @@ class SecurityGuardApp extends StatelessWidget {
               '/locations': (c) => const LocationsScreen(),
               '/reports': (c) => const ReportsScreen(),
               '/settings': (c) => const SettingsScreen(),
+              '/reports-menu': (c) => const ReportsMenuScreen(),
+              '/attendance-report': (c) => const AttendanceReportScreen(),
+              '/activity-report': (c) => const ActivityReportScreen(),
+              '/incident-report': (c) => const IncidentReportScreen(),
             },
           );
         },
