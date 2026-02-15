@@ -141,12 +141,24 @@ namespace SecurityGuardApi.Controllers
                     return Ok(new { message = "Not PostgreSQL, no fix needed" });
                 }
 
-                // Fix the IsBlocked column type in PostgreSQL
+                // Fix 1: Convert IsBlocked from integer to boolean
                 await _context.Database.ExecuteSqlRawAsync(
                     "ALTER TABLE \"Users\" ALTER COLUMN \"IsBlocked\" TYPE boolean USING \"IsBlocked\"::boolean;"
                 );
 
-                return Ok(new { message = "Database schema fixed successfully!" });
+                // Fix 2: Create sequence for Id auto-increment if it doesn't exist
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    DO $$ 
+                    BEGIN
+                        IF NOT EXISTS (SELECT 1 FROM pg_sequences WHERE schemaname = 'public' AND sequencename = 'users_id_seq') THEN
+                            CREATE SEQUENCE users_id_seq;
+                            ALTER TABLE ""Users"" ALTER COLUMN ""Id"" SET DEFAULT nextval('users_id_seq');
+                            SELECT setval('users_id_seq', COALESCE((SELECT MAX(""Id"") FROM ""Users""), 0) + 1, false);
+                        END IF;
+                    END $$;
+                ");
+
+                return Ok(new { message = "Database schema fixed successfully (boolean + auto-increment)!" });
             }
             catch (Exception ex)
             {
