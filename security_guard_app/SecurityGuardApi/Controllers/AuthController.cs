@@ -153,7 +153,7 @@ namespace SecurityGuardApi.Controllers
                         IF NOT EXISTS (SELECT 1 FROM pg_sequences WHERE schemaname = 'public' AND sequencename = 'users_id_seq') THEN
                             CREATE SEQUENCE users_id_seq;
                             ALTER TABLE ""Users"" ALTER COLUMN ""Id"" SET DEFAULT nextval('users_id_seq');
-                            SELECT setval('users_id_seq', COALESCE((SELECT MAX(""Id"") FROM ""Users""), 0) + 1, false);
+                            PERFORM setval('users_id_seq', COALESCE((SELECT MAX(""Id"") FROM ""Users""), 0) + 1, false);
                         END IF;
                     END $$;
                 ");
