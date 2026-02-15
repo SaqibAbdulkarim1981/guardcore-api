@@ -103,21 +103,63 @@ namespace SecurityGuardApi.Controllers
 
         // GET: api/Attendance
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Attendance>>> GetAttendance()
+        public async Task<ActionResult<IEnumerable<object>>> GetAttendance()
         {
-            return await _context.Set<Attendance>()
+            var attendances = await _context.Set<Attendance>()
                 .OrderByDescending(a => a.Timestamp)
                 .ToListAsync();
+
+            var result = new List<object>();
+            foreach (var attendance in attendances)
+            {
+                var user = await _context.Users.FindAsync(attendance.UserId);
+                var location = await _context.Locations.FindAsync(attendance.LocationId);
+
+                result.Add(new
+                {
+                    attendance.Id,
+                    attendance.UserId,
+                    UserName = user?.Name ?? "Unknown",
+                    attendance.LocationId,
+                    LocationName = location?.Name ?? "Unknown Location",
+                    attendance.Type,
+                    attendance.Timestamp,
+                    attendance.QRData
+                });
+            }
+
+            return Ok(result);
         }
 
         // GET: api/Attendance/user/{userId}
         [HttpGet("user/{userId}")]
-        public async Task<ActionResult<IEnumerable<Attendance>>> GetUserAttendance(int userId)
+        public async Task<ActionResult<IEnumerable<object>>> GetUserAttendance(int userId)
         {
-            return await _context.Set<Attendance>()
+            var attendances = await _context.Set<Attendance>()
                 .Where(a => a.UserId == userId)
                 .OrderByDescending(a => a.Timestamp)
                 .ToListAsync();
+
+            var result = new List<object>();
+            foreach (var attendance in attendances)
+            {
+                var user = await _context.Users.FindAsync(attendance.UserId);
+                var location = await _context.Locations.FindAsync(attendance.LocationId);
+
+                result.Add(new
+                {
+                    attendance.Id,
+                    attendance.UserId,
+                    UserName = user?.Name ?? "Unknown",
+                    attendance.LocationId,
+                    LocationName = location?.Name ?? "Unknown Location",
+                    attendance.Type,
+                    attendance.Timestamp,
+                    attendance.QRData
+                });
+            }
+
+            return Ok(result);
         }
     }
 
