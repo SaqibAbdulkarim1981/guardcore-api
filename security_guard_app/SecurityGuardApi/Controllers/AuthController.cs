@@ -23,6 +23,40 @@ namespace SecurityGuardApi.Controllers
             _context = context;
         }
 
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterDto dto)
+        {
+            try
+            {
+                // Check if user already exists
+                var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+                if (existingUser != null)
+                {
+                    return BadRequest(new { message = "User already exists" });
+                }
+
+                // Create new user
+                var newUser = new User
+                {
+                    Name = dto.Name ?? dto.Email,
+                    Email = dto.Email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                    IsBlocked = false,
+                    ExpiryDate = DateTime.UtcNow.AddYears(1),
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Users.Add(newUser);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "User registered successfully", userId = newUser.Id });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Registration error: {ex.Message}" });
+            }
+        }
+
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
