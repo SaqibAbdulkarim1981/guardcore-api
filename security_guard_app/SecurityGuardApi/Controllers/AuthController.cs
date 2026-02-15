@@ -224,6 +224,34 @@ namespace SecurityGuardApi.Controllers
             }
         }
 
+        [HttpPost("reset-database")]
+        public async Task<IActionResult> ResetDatabase()
+        {
+            try
+            {
+                var isPostgres = _context.Database.ProviderName?.Contains("Npgsql") ?? false;
+                
+                if (!isPostgres)
+                {
+                    return BadRequest(new { message = "Only PostgreSQL is supported" });
+                }
+
+                // Drop all tables (except Users which has data)
+                await _context.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"Attendances\" CASCADE;");
+                await _context.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"Locations\" CASCADE;");
+                await _context.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"Reports\" CASCADE;");
+
+                // Re-run migrations to create tables with proper schema
+                await _context.Database.MigrateAsync();
+
+                return Ok(new { message = "Database reset successfully! Tables recreated with proper schema." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Reset error: {ex.Message}", detail = ex.InnerException?.Message });
+            }
+        }
+
         [HttpPost("init-tables")]
         public async Task<IActionResult> InitializeTables()
         {
