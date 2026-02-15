@@ -283,73 +283,54 @@ namespace SecurityGuardApi.Controllers
         {
             try
             {
-                // Create a test location
-                var locationExists = await _context.Locations.AnyAsync();
-                if (!locationExists)
+                var isPostgres = _context.Database.ProviderName?.Contains("Npgsql") ?? false;
+                
+                if (isPostgres)
                 {
-                    var location = new Location
-                    {
-                        Name = "Main Entrance",
-                        Description = "Front gate checkpoint",
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    _context.Locations.Add(location);
-                    await _context.SaveChangesAsync();
-                }
+                    // Direct SQL insertion for PostgreSQL
+                    // Insert location
+                    await _context.Database.ExecuteSqlRawAsync(@"
+                        INSERT INTO ""Locations"" (""Name"", ""Description"", ""CreatedAt"")
+                        SELECT 'Main Entrance', 'Front gate checkpoint', CURRENT_TIMESTAMP
+                        WHERE NOT EXISTS (SELECT 1 FROM ""Locations"" WHERE ""Name"" = 'Main Entrance');
+                    ");
 
-                var testLocation = await _context.Locations.FirstOrDefaultAsync();
-                var guardUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == "guard@test.com");
+                    // Insert attendance records for guard (user ID 1) - past 5 days
+                    await _context.Database.ExecuteSqlRawAsync(@"
+                        INSERT INTO ""Attendances"" (""UserId"", ""LocationId"", ""Type"", ""Timestamp"", ""QRData"")
+                        SELECT 1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '7 days' + INTERVAL '9 hours', '1'
+                        WHERE NOT EXISTS (SELECT 1 FROM ""Attendances"" LIMIT 1)
+                        UNION ALL
+                        SELECT 1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '7 days' + INTERVAL '17 hours', '1'
+                        UNION ALL
+                        SELECT 1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '6 days' + INTERVAL '9 hours', '1'
+                        UNION ALL
+                        SELECT 1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '6 days' + INTERVAL '18 hours', '1'
+                        UNION ALL
+                        SELECT 1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '5 days' + INTERVAL '8 hours 30 minutes', '1'
+                        UNION ALL
+                        SELECT 1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '5 days' + INTERVAL '17 hours 15 minutes', '1'
+                        UNION ALL
+                        SELECT 1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '4 days' + INTERVAL '9 hours 15 minutes', '1'
+                        UNION ALL
+                        SELECT 1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '4 days' + INTERVAL '17 hours 45 minutes', '1'
+                        UNION ALL
+                        SELECT 1, 1, 'CheckIn', CURRENT_TIMESTAMP - INTERVAL '3 days' + INTERVAL '9 hours 5 minutes', '1'
+                        UNION ALL
+                        SELECT 1, 1, 'CheckOut', CURRENT_TIMESTAMP - INTERVAL '3 days' + INTERVAL '18 hours 10 minutes', '1';
+                    ");
 
-                if (testLocation == null || guardUser == null)
-                {
-                    return BadRequest(new { message = "Location or guard user not found. Run seed endpoint first." });
-                }
-
-                // Check if attendance records already exist
-                var attendanceExists = await _context.Attendances.AnyAsync();
-                if (attendanceExists)
-                {
-                    return Ok(new { message = "Test data already exists", records = await _context.Attendances.CountAsync() });
-                }
-
-                // Create test attendance records for the past 5 days
-                var records = new List<Attendance>();
-                var baseDate = DateTime.UtcNow.AddDays(-7);
-
-                for (int i = 0; i < 5; i++)
-                {
-                    var checkInTime = baseDate.AddDays(i).Date.AddHours(9).AddMinutes(new Random().Next(0, 15));
-                    var checkOutTime = checkInTime.AddHours(8).AddMinutes(new Random().Next(30, 60));
-
-                    records.Add(new Attendance
-                    {
-                        UserId = guardUser.Id,
-                        LocationId = testLocation.Id,
-                        Type = "CheckIn",
-                        Timestamp = checkInTime,
-                        QRData = testLocation.Id.ToString()
-                    });
-
-                    records.Add(new Attendance
-                    {
-                        UserId = guardUser.Id,
-                        LocationId = testLocation.Id,
-                        Type = "CheckOut",
-                        Timestamp = checkOutTime,
-                        QRData = testLocation.Id.ToString()
+                    var count = await _context.Attendances.CountAsync();
+                    return Ok(new 
+                    { 
+                        message = "Test data seeded successfully!",
+                        location = "Main Entrance",
+                        records = count,
+                        days = 5
                     });
                 }
 
-                _context.Attendances.AddRange(records);
-                await _context.SaveChangesAsync();
-
-                return Ok(new 
-                { 
-                    message = "Test data seeded successfully!",
-                    location = testLocation.Name,
-                    records = records.Count,
-                    days = 5
-                });
+                return BadRequest(new { message = "Only PostgreSQL is supported for test data seeding" });
             }
             catch (Exception ex)
             {
