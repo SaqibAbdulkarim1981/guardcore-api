@@ -42,6 +42,7 @@ namespace SecurityGuardApi.Controllers
                     Email = dto.Email,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
                     IsBlocked = false,
+                    ActiveDays = 0,
                     ExpiryDate = DateTime.UtcNow.AddYears(1),
                     CreatedAt = DateTime.UtcNow
                 };
@@ -53,7 +54,8 @@ namespace SecurityGuardApi.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = $"Registration error: {ex.Message}" });
+                var innerEx = ex.InnerException?.Message ?? "No inner exception";
+                return StatusCode(500, new { message = $"Registration error: {ex.Message}", inner = innerEx, stack = ex.StackTrace });
             }
         }
 
@@ -126,6 +128,32 @@ namespace SecurityGuardApi.Controllers
             }
         }
 
+        [HttpPost("fix-schema")]
+        public async Task<IActionResult> FixDatabaseSchema()
+        {
+            try
+            {
+                // Check if we're using PostgreSQL
+                var isPostgres = _context.Database.ProviderName?.Contains("Npgsql") ?? false;
+                
+                if (!isPostgres)
+                {
+                    return Ok(new { message = "Not PostgreSQL, no fix needed" });
+                }
+
+                // Fix the IsBlocked column type in PostgreSQL
+                await _context.Database.ExecuteSqlRawAsync(
+                    "ALTER TABLE \"Users\" ALTER COLUMN \"IsBlocked\" TYPE boolean USING \"IsBlocked\"::boolean;"
+                );
+
+                return Ok(new { message = "Database schema fixed successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Schema fix error: {ex.Message}", inner = ex.InnerException?.Message });
+            }
+        }
+
         [HttpPost("seed")]
         public async Task<IActionResult> SeedDatabase()
         {
@@ -145,6 +173,7 @@ namespace SecurityGuardApi.Controllers
                     Email = "admin@example.com",
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
                     IsBlocked = false,
+                    ActiveDays = 0,
                     ExpiryDate = DateTime.UtcNow.AddYears(10),
                     CreatedAt = DateTime.UtcNow
                 };
@@ -157,6 +186,7 @@ namespace SecurityGuardApi.Controllers
                     Email = "guard@test.com",
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword("guard123"),
                     IsBlocked = false,
+                    ActiveDays = 0,
                     ExpiryDate = DateTime.UtcNow.AddDays(30),
                     CreatedAt = DateTime.UtcNow
                 };

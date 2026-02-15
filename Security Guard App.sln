@@ -1,0 +1,29 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "security_guard_app", "security_guard_app", "{D3009990-0EE7-FDFF-683A-0FCDE25B53FC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SecurityGuardApi", "security_guard_app\SecurityGuardApi\SecurityGuardApi.csproj", "{DD22840F-9DB7-C679-991C-AB387E9237BD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DD22840F-9DB7-C679-991C-AB387E9237BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD22840F-9DB7-C679-991C-AB387E9237BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD22840F-9DB7-C679-991C-AB387E9237BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD22840F-9DB7-C679-991C-AB387E9237BD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{DD22840F-9DB7-C679-991C-AB387E9237BD} = {D3009990-0EE7-FDFF-683A-0FCDE25B53FC}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {08E4835C-FE05-41A3-87AD-1FC062F7704C}
+	EndGlobalSection
+EndGlobal
