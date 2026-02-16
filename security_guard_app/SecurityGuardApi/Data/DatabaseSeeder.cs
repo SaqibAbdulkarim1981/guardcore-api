@@ -8,9 +8,9 @@ namespace SecurityGuardApi
     {
         public static void SeedDatabase(AppDbContext context)
         {
-            // Ensure database is created
-            context.Database.EnsureCreated();
-
+            // Don't call EnsureCreated - it conflicts with migrations
+            // Just check if seeding is needed
+            
             // Check if admin user already exists
             if (context.Users.Any(u => u.Email == "admin@example.com"))
             {
@@ -18,7 +18,7 @@ namespace SecurityGuardApi
                 return;
             }
 
-            Console.WriteLine("🌱 Seeding database with test data...");
+            Console.WriteLine("🌱 Seeding database with test data (PostgreSQL)...");
 
             // Create Admin User
             var adminUser = new User

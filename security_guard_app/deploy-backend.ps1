@@ -4,7 +4,7 @@
 Write-Host "`n=== GuardCore API - Zero Cost Deployment ===" -ForegroundColor Cyan
 Write-Host "`nThis script will help you deploy your API for FREE!" -ForegroundColor Green
 
-Write-Host "`n[1] Fly.io (Recommended - SQLite + Always On)"
+Write-Host "`n[1] Fly.io (Recommended - PostgreSQL + Always On)"
 Write-Host "[2] Railway.app (Easy - $5 credit/month)"
 Write-Host "[3] Render.com (100% Free - Auto-sleep)"
 Write-Host "[4] Show detailed instructions"

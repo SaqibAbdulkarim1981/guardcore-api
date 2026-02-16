@@ -133,20 +133,14 @@ namespace SecurityGuardApi.Controllers
         {
             try
             {
-                // Check if we're using PostgreSQL
-                var isPostgres = _context.Database.ProviderName?.Contains("Npgsql") ?? false;
-                
-                if (!isPostgres)
-                {
-                    return Ok(new { message = "Not PostgreSQL, no fix needed" });
-                }
+                Console.WriteLine("Fixing PostgreSQL schema (boolean types, timestamps, sequences)...");
 
-                // Fix 1: Convert IsBlocked from integer to boolean
+                // Fix 1: Convert IsBlocked from integer to boolean (if needed)
                 await _context.Database.ExecuteSqlRawAsync(
                     "ALTER TABLE \"Users\" ALTER COLUMN \"IsBlocked\" TYPE boolean USING \"IsBlocked\"::boolean;"
                 );
 
-                // Fix 2: Convert CreatedAt and ExpiryDate from text to timestamp
+                // Fix 2: Convert CreatedAt and ExpiryDate from text to timestamp (if needed)
                 await _context.Database.ExecuteSqlRawAsync(
                     "ALTER TABLE \"Users\" ALTER COLUMN \"CreatedAt\" TYPE timestamp USING \"CreatedAt\"::timestamp;"
                 );
@@ -167,7 +161,7 @@ namespace SecurityGuardApi.Controllers
                     END $$;
                 ");
 
-                return Ok(new { message = "Database schema fixed successfully (boolean + timestamps + auto-increment)!" });
+                return Ok(new { message = "PostgreSQL schema fixed successfully (boolean + timestamps + auto-increment)!" });
             }
             catch (Exception ex)
             {
@@ -229,22 +223,46 @@ namespace SecurityGuardApi.Controllers
         {
             try
             {
-                var isPostgres = _context.Database.ProviderName?.Contains("Npgsql") ?? false;
-                
-                if (!isPostgres)
-                {
-                    return BadRequest(new { message = "Only PostgreSQL is supported" });
-                }
+                Console.WriteLine("Resetting PostgreSQL database tables...");
 
                 // Drop all tables (except Users which has data)
                 await _context.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"Attendances\" CASCADE;");
                 await _context.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"Locations\" CASCADE;");
                 await _context.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS \"Reports\" CASCADE;");
 
-                // Re-run migrations to create tables with proper schema
-                await _context.Database.MigrateAsync();
+                // Create tables with proper SERIAL columns for PostgreSQL
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    CREATE TABLE ""Locations"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Name"" VARCHAR(255) NOT NULL,
+                        ""Description"" TEXT,
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                ");
 
-                return Ok(new { message = "Database reset successfully! Tables recreated with proper schema." });
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    CREATE TABLE ""Attendances"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""UserId"" INTEGER NOT NULL,
+                        ""LocationId"" INTEGER NOT NULL,
+                        ""Type"" VARCHAR(50) NOT NULL DEFAULT 'CheckIn',
+                        ""Timestamp"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        ""QRData"" TEXT
+                    );
+                ");
+
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    CREATE TABLE ""Reports"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""UserId"" INTEGER,
+                        ""LocationId"" INTEGER,
+                        ""Type"" VARCHAR(100),
+                        ""Description"" TEXT,
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                ");
+
+                return Ok(new { message = "PostgreSQL database reset successfully! Tables recreated with SERIAL columns." });
             }
             catch (Exception ex)
             {
@@ -257,12 +275,8 @@ namespace SecurityGuardApi.Controllers
         {
             try
             {
-                var isPostgres = _context.Database.ProviderName?.Contains("Npgsql") ?? false;
-                
-                if (!isPostgres)
-                {
-                    return Ok(new { message = "Not PostgreSQL, using SQLite - tables created automatically" });
-                }
+                // This endpoint is for PostgreSQL initialization
+                Console.WriteLine("Creating PostgreSQL tables with SERIAL columns...");
 
                 // Create Locations table if not exists
                 await _context.Database.ExecuteSqlRawAsync(@"
@@ -298,7 +312,7 @@ namespace SecurityGuardApi.Controllers
                     );
                 ");
 
-                return Ok(new { message = "Tables created successfully (Locations, Attendances, Reports)!" });
+                return Ok(new { message = "PostgreSQL tables created successfully (Locations, Attendances, Reports) with SERIAL columns!" });
             }
             catch (Exception ex)
             {
@@ -319,7 +333,7 @@ namespace SecurityGuardApi.Controllers
                     return Ok(new { message = "Test data already exists", locations = existingCount, attendance = existingAttendance });
                 }
 
-                // Use Entity Framework to properly handle ID generation for both SQLite and PostgreSQL
+                // Use Entity Framework to properly handle ID generation for PostgreSQL
                 var location = new Location
                 {
                     Name = "Main Entrance",

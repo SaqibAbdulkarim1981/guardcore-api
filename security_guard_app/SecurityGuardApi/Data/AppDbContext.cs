@@ -17,6 +17,23 @@ namespace SecurityGuardApi.Data
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
+
+            // Configure Identity columns for PostgreSQL
+            modelBuilder.Entity<User>()
+                .Property(u => u.Id)
+                .ValueGeneratedOnAdd();
+            
+            modelBuilder.Entity<Location>()
+                .Property(l => l.Id)
+                .ValueGeneratedOnAdd();
+            
+            modelBuilder.Entity<Report>()
+                .Property(r => r.Id)
+                .ValueGeneratedOnAdd();
+            
+            modelBuilder.Entity<Attendance>()
+                .Property(a => a.Id)
+                .ValueGeneratedOnAdd();
         }
     }
 }
