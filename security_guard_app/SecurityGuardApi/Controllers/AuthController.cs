@@ -397,5 +397,102 @@ namespace SecurityGuardApi.Controllers
                 });
             }
         }
+
+        [HttpPost("seed-reports")]
+        public async Task<IActionResult> SeedReportData()
+        {
+            try
+            {
+                // Check if reports already exist
+                var existingReports = await _context.Reports.CountAsync();
+                if (existingReports > 0)
+                {
+                    return Ok(new { message = "Reports already exist", reports = existingReports });
+                }
+
+                // Get first user and first location
+                var firstUser = await _context.Users.FirstOrDefaultAsync();
+                var firstLocation = await _context.Locations.FirstOrDefaultAsync();
+                
+                if (firstUser == null)
+                {
+                    return BadRequest(new { message = "No users found. Please seed users first." });
+                }
+
+                if (firstLocation == null)
+                {
+                    return BadRequest(new { message = "No locations found. Please seed locations first." });
+                }
+
+                // Create Sample Reports (Incident and Activity)
+                var reports = new List<Report>
+                {
+                    new Report
+                    {
+                        UserId = firstUser.Id,
+                        LocationId = firstLocation.Id,
+                        Type = "Incident",
+                        Description = "Suspicious person attempting to enter restricted area without proper identification. Person was escorted out and details recorded.",
+                        CreatedAt = DateTime.UtcNow.AddDays(-2)
+                    },
+                    new Report
+                    {
+                        UserId = firstUser.Id,
+                        LocationId = firstLocation.Id,
+                        Type = "Activity",
+                        Description = "Routine patrol completed. All parking lot lights functional. No security concerns observed.",
+                        CreatedAt = DateTime.UtcNow.AddDays(-1)
+                    },
+                    new Report
+                    {
+                        UserId = firstUser.Id,
+                        LocationId = firstLocation.Id,
+                        Type = "Incident",
+                        Description = "Unauthorized access attempt to rooftop door. Alarm triggered at 02:45 AM. Police notified and responded within 10 minutes.",
+                        CreatedAt = DateTime.UtcNow.AddHours(-12)
+                    },
+                    new Report
+                    {
+                        UserId = firstUser.Id,
+                        LocationId = firstLocation.Id,
+                        Type = "Activity",
+                        Description = "Equipment inspection performed. Fire extinguisher pressure checked and within normal range. Emergency lighting tested successfully.",
+                        CreatedAt = DateTime.UtcNow.AddHours(-6)
+                    },
+                    new Report
+                    {
+                        UserId = firstUser.Id,
+                        LocationId = firstLocation.Id,
+                        Type = "Incident",
+                        Description = "Vehicle break-in reported in parking lot section B. CCTV footage reviewed. License plate recorded: ABC-1234. Police report filed.",
+                        CreatedAt = DateTime.UtcNow.AddHours(-3)
+                    }
+                };
+
+                _context.Reports.AddRange(reports);
+                await _context.SaveChangesAsync();
+
+                var incidentCount = reports.Count(r => r.Type == "Incident");
+                var activityCount = reports.Count(r => r.Type == "Activity");
+
+                return Ok(new 
+                { 
+                    message = "Report data seeded successfully!",
+                    totalReports = reports.Count,
+                    incidentReports = incidentCount,
+                    activityReports = activityCount,
+                    userId = firstUser.Id,
+                    locationId = firstLocation.Id
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { 
+                    message = "Report seeding error",
+                    error = ex.Message, 
+                    innerError = ex.InnerException?.Message
+                });
+            }
+        }
     }
 }
