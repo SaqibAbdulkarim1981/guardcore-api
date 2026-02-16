@@ -71,6 +71,59 @@ namespace SecurityGuardApi
 
             context.SaveChanges();
 
+            // Create Sample Reports (Incident and Activity)
+            var report1 = new Report
+            {
+                UserId = guardUser.Id,
+                LocationId = location1.Id,
+                Type = "Incident",
+                Description = "Suspicious person attempting to enter restricted area without proper identification. Person was escorted out and details recorded.",
+                CreatedAt = DateTime.UtcNow.AddDays(-2)
+            };
+            context.Reports.Add(report1);
+
+            var report2 = new Report
+            {
+                UserId = guardUser.Id,
+                LocationId = location2.Id,
+                Type = "Activity",
+                Description = "Routine patrol completed. All parking lot lights functional. No security concerns observed.",
+                CreatedAt = DateTime.UtcNow.AddDays(-1)
+            };
+            context.Reports.Add(report2);
+
+            var report3 = new Report
+            {
+                UserId = guardUser.Id,
+                LocationId = location3.Id,
+                Type = "Incident",
+                Description = "Unauthorized access attempt to rooftop door. Alarm triggered at 02:45 AM. Police notified and responded within 10 minutes.",
+                CreatedAt = DateTime.UtcNow.AddHours(-12)
+            };
+            context.Reports.Add(report3);
+
+            var report4 = new Report
+            {
+                UserId = guardUser.Id,
+                LocationId = location1.Id,
+                Type = "Activity",
+                Description = "Equipment inspection performed. Fire extinguisher pressure checked and within normal range. Emergency lighting tested successfully.",
+                CreatedAt = DateTime.UtcNow.AddHours(-6)
+            };
+            context.Reports.Add(report4);
+
+            var report5 = new Report
+            {
+                UserId = guardUser.Id,
+                LocationId = location2.Id,
+                Type = "Incident",
+                Description = "Vehicle break-in reported in parking lot section B. CCTV footage reviewed. License plate recorded: ABC-1234. Police report filed.",
+                CreatedAt = DateTime.UtcNow.AddHours(-3)
+            };
+            context.Reports.Add(report5);
+
+            context.SaveChanges();
+
             Console.WriteLine("✅ Database seeded successfully!");
             Console.WriteLine("");
             Console.WriteLine("========================================");
@@ -89,6 +142,10 @@ namespace SecurityGuardApi
             Console.WriteLine("   • Main Entrance (ID: 1)");
             Console.WriteLine("   • Parking Lot (ID: 2)");
             Console.WriteLine("   • Rooftop Access (ID: 3)");
+            Console.WriteLine("");
+            Console.WriteLine("📋 REPORTS CREATED:");
+            Console.WriteLine("   • 3 Incident Reports");
+            Console.WriteLine("   • 2 Activity Reports");
             Console.WriteLine("");
             Console.WriteLine("========================================");
             Console.WriteLine("");
