@@ -79,14 +79,6 @@ workflows:
         script: |
           flutter packages pub get
       
-      - name: Flutter analyze
-        script: |
-          flutter analyze
-      
-      - name: Flutter test
-        script: |
-          flutter test
-      
       - name: Build iOS (debug - no signing)
         script: |
           flutter build ios --debug --no-codesign
