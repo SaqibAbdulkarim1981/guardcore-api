@@ -79,12 +79,12 @@ workflows:
         script: |
           flutter packages pub get
       
-      - name: Build iOS (debug - no signing)
+      - name: Build iOS for Simulator
         script: |
-          flutter build ios --debug --no-codesign
+          flutter build ios --simulator --debug
     
     artifacts:
-      - build/ios/iphoneos/*.app
+      - build/ios/iphonesimulator/*.app
 
   android-release:
     name: Android Release Build
