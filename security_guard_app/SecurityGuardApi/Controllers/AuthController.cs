@@ -325,40 +325,34 @@ namespace SecurityGuardApi.Controllers
                     return Ok(new { message = "Test data already exists", locations = existingCount, attendance = existingAttendance });
                 }
 
-                // Fix sequence - reset it to start from 1
-                try
-                {
-                    await _context.Database.ExecuteSqlRawAsync(@"
-                        ALTER SEQUENCE ""Locations_Id_seq"" RESTART WITH 1;
-                    ");
-                }
-                catch { /* Sequence might not exist */ }
-
-                // Insert location with explicit nextval
+                // Insert location without specifying ID - let PostgreSQL handle it
                 await _context.Database.ExecuteSqlRawAsync(@"
-                    INSERT INTO ""Locations"" (""Id"", ""Name"", ""Description"", ""CreatedAt"")
-                    VALUES (nextval('""Locations_Id_seq""'), 'Main Entrance', 'Front gate checkpoint', CURRENT_TIMESTAMP);
+                    INSERT INTO ""Locations"" (""Name"", ""Description"", ""CreatedAt"")
+                    VALUES ('Main Entrance', 'Front gate checkpoint', CURRENT_TIMESTAMP);
                 ");
 
-                // Get the location ID
+                // Get the location ID that was just created
                 var locationId = await _context.Locations.Select(l => l.Id).FirstAsync();
 
                 // Insert attendance records
                 var now = DateTime.UtcNow;
-                await _context.Database.ExecuteSqlRawAsync($@"
-                    INSERT INTO ""Attendances"" (""Id"", ""UserId"", ""LocationId"", ""Type"", ""Timestamp"", ""QRData"")
-                    VALUES
-                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckIn', '{now.AddDays(-7).AddHours(9):yyyy-MM-dd HH:mm:ss}', '1'),
-                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckOut', '{now.AddDays(-7).AddHours(17):yyyy-MM-dd HH:mm:ss}', '1'),
-                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckIn', '{now.AddDays(-6).AddHours(9):yyyy-MM-dd HH:mm:ss}', '1'),
-                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckOut', '{now.AddDays(-6).AddHours(18):yyyy-MM-dd HH:mm:ss}', '1'),
-                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckIn', '{now.AddDays(-5).AddHours(8).AddMinutes(30):yyyy-MM-dd HH:mm:ss}', '1'),
-                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckOut', '{now.AddDays(-5).AddHours(17).AddMinutes(15):yyyy-MM-dd HH:mm:ss}', '1'),
-                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckIn', '{now.AddDays(-4).AddHours(9).AddMinutes(15):yyyy-MM-dd HH:mm:ss}', '1'),
-                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckOut', '{now.AddDays(-4).AddHours(17).AddMinutes(45):yyyy-MM-dd HH:mm:ss}', '1'),
-                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckIn', '{now.AddDays(-3).AddHours(9).AddMinutes(5):yyyy-MM-dd HH:mm:ss}', '1'),
-                        (nextval('""Attendances_Id_seq""'), 1, {locationId}, 'CheckOut', '{now.AddDays(-3).AddHours(18).AddMinutes(10):yyyy-MM-dd HH:mm:ss}', '1');
-                ");
+                var records = new (string type, int hours, int minutes)[]
+                {
+                    ("CheckIn", -7*24+9, 0), ("CheckOut", -7*24+17, 0),
+                    ("CheckIn", -6*24+9, 0), ("CheckOut", -6*24+18, 0),
+                    ("CheckIn", -5*24+8, 30), ("CheckOut", -5*24+17, 15),
+                    ("CheckIn", -4*24+9, 15), ("CheckOut", -4*24+17, 45),
+                    ("CheckIn", -3*24+9, 5), ("CheckOut", -3*24+18, 10)
+                };
+
+                foreach (var (type, hours, minutes) in records)
+                {
+                    var timestamp = now.AddHours(hours).AddMinutes(minutes);
+                    await _context.Database.ExecuteSqlRawAsync($@"
+                        INSERT INTO ""Attendances"" (""UserId"", ""LocationId"", ""Type"", ""Timestamp"", ""QRData"")
+                        VALUES (1, {locationId}, '{type}', '{timestamp:yyyy-MM-dd HH:mm:ss}', '1');
+                    ");
+                }
 
                 return Ok(new 
                 { 
