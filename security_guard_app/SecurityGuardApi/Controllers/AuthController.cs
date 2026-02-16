@@ -311,12 +311,6 @@ namespace SecurityGuardApi.Controllers
         {
             try
             {
-                var isPostgres = _context.Database.ProviderName?.Contains("Npgsql") ?? false;
-                if (!isPostgres)
-                {
-                    return BadRequest(new { message = "PostgreSQL required" });
-                }
-
                 // Check if data already exists
                 var existingCount = await _context.Locations.CountAsync();
                 if (existingCount > 0)
@@ -325,16 +319,24 @@ namespace SecurityGuardApi.Controllers
                     return Ok(new { message = "Test data already exists", locations = existingCount, attendance = existingAttendance });
                 }
 
-                // Insert location without specifying ID - let PostgreSQL handle it
-                await _context.Database.ExecuteSqlRawAsync(@"
-                    INSERT INTO ""Locations"" (""Name"", ""Description"", ""CreatedAt"")
-                    VALUES ('Main Entrance', 'Front gate checkpoint', CURRENT_TIMESTAMP);
-                ");
+                // Use Entity Framework to properly handle ID generation for both SQLite and PostgreSQL
+                var location = new Location
+                {
+                    Name = "Main Entrance",
+                    Description = "Front gate checkpoint",
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Locations.Add(location);
+                await _context.SaveChangesAsync();
 
-                // Get the location ID that was just created
-                var locationId = await _context.Locations.Select(l => l.Id).FirstAsync();
+                // Get the first user (should be admin from seed data)
+                var firstUser = await _context.Users.FirstOrDefaultAsync();
+                if (firstUser == null)
+                {
+                    return BadRequest(new { message = "No users found. Please seed users first using /api/Auth/seed endpoint." });
+                }
 
-                // Insert attendance records
+                // Insert attendance records using Entity Framework
                 var now = DateTime.UtcNow;
                 var records = new (string type, int hours, int minutes)[]
                 {
@@ -348,17 +350,25 @@ namespace SecurityGuardApi.Controllers
                 foreach (var (type, hours, minutes) in records)
                 {
                     var timestamp = now.AddHours(hours).AddMinutes(minutes);
-                    await _context.Database.ExecuteSqlRawAsync($@"
-                        INSERT INTO ""Attendances"" (""UserId"", ""LocationId"", ""Type"", ""Timestamp"", ""QRData"")
-                        VALUES (1, {locationId}, '{type}', '{timestamp:yyyy-MM-dd HH:mm:ss}', '1');
-                    ");
+                    var attendance = new Attendance
+                    {
+                        UserId = firstUser.Id,
+                        LocationId = location.Id,
+                        Type = type,
+                        Timestamp = timestamp,
+                        QRData = firstUser.Id.ToString()
+                    };
+                    _context.Attendances.Add(attendance);
                 }
+                
+                await _context.SaveChangesAsync();
 
                 return Ok(new 
                 { 
                     message = "Test data seeded successfully!",
-                    location = "Main Entrance",
-                    locationId = locationId,
+                    location = location.Name,
+                    locationId = location.Id,
+                    userId = firstUser.Id,
                     locations = await _context.Locations.CountAsync(),
                     attendance = await _context.Attendances.CountAsync(),
                     days = 5
